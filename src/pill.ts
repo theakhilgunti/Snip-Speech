@@ -140,15 +140,25 @@ function paint(index: number) {
     w.el.classList.toggle("read", index >= 0 && k < index);
     w.el.classList.toggle("now", k === index);
   });
+  renderMeta();
   if (index >= 0) {
     cursor = words[index].start;
     words[index].el.scrollIntoView({ block: "center", behavior: "smooth" });
   }
 }
 
-function setMeta(label: string) {
+let metaLabel = "";
+
+/** "Snipped 2:41 PM · 6/9 words": which word is being spoken, out of the total. */
+function renderMeta() {
   const n = words.length;
-  metaEl.textContent = `${label} · ${n} word${n === 1 ? "" : "s"}`;
+  const count = nowIndex >= 0 ? `${nowIndex + 1}/${n}` : `${n}`;
+  metaEl.textContent = `${metaLabel} · ${count} word${n === 1 ? "" : "s"}`;
+}
+
+function setMeta(label: string) {
+  metaLabel = label;
+  renderMeta();
 }
 
 // --------------------------------------------------------------- playback
@@ -513,9 +523,30 @@ async function refreshHistory() {
   }
 }
 
-$("clear-history").addEventListener("click", async () => {
+// Clear History: entries swipe up and fade out in a quick stagger, the button confirms, then the
+// empty state fades in. The data is wiped right away; the animation is only the visual reaction.
+$("clear-history").addEventListener("click", async (e) => {
+  const btn = e.currentTarget as HTMLButtonElement;
+  const items = [...document.querySelectorAll<HTMLElement>("#history-list .item")];
+  if (items.length === 0 || btn.disabled) return;
+
+  btn.disabled = true;
+  btn.textContent = "Cleared";
+  btn.classList.add("done");
+  items.forEach((el, i) => {
+    el.style.animationDelay = `${Math.min(i, 8) * 45}ms`;
+    el.classList.add("out");
+  });
+
   await invoke("history_clear");
-  refreshHistory();
+  await new Promise((r) => setTimeout(r, 360 + Math.min(items.length - 1, 8) * 45));
+  await refreshHistory();
+
+  setTimeout(() => {
+    btn.textContent = "Clear History";
+    btn.classList.remove("done");
+    btn.disabled = false;
+  }, 900);
 });
 
 // --------------------------------------------------------------- settings

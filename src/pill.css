@@ -126,7 +126,18 @@ h2 { margin: 14px 0 8px; font-size: 13px; font-weight: 600; letter-spacing: .01e
 .item:hover { border-color: rgba(94, 234, 212, .55); }
 .item .t { font-size: 13.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .item .m { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
-.empty { color: var(--muted); font-size: 13px; text-align: center; padding: 28px 10px; }
+.empty { color: var(--muted); font-size: 13px; text-align: center; padding: 28px 10px; animation: fadeIn .35s ease-out both; }
+.danger.done { border-color: var(--accent); color: var(--accent); background: rgba(94, 234, 212, .1); }
+.danger { transition: background .15s, color .2s, border-color .2s; }
+
+/* Clear History: each entry swipes up and fades out (staggered via animation-delay). */
+.item.out { animation: swipeUp .36s cubic-bezier(.4, 0, .9, .6) forwards; pointer-events: none; }
+@keyframes swipeUp { to { opacity: 0; transform: translateY(-26px) scale(.96); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .item.out { animation-duration: .01s; }
+  .empty { animation: none; }
+}
 
 /* ------------------------------------------------------------------ settings */
 .row { display: flex; gap: 8px; align-items: center; }

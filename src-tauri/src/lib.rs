@@ -121,6 +121,7 @@ pub fn run() {
             capture::overlay_frame,
             capture::finish_snip,
             capture::cancel_snip,
+            capture::overlay_ready,
             capture::open_screen_recording_settings,
             get_prefs,
             set_pref,

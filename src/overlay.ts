@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 
 const label = getCurrentWebviewWindow().label;
@@ -15,9 +16,21 @@ function scale(): number {
   return bg.naturalWidth > 0 ? bg.naturalWidth / window.innerWidth : window.devicePixelRatio;
 }
 
+let frameLoaded = false;
+
+/** Fetch the frozen screenshot. It may not be captured yet when the page loads, so this
+ *  runs once on load and again when Rust signals that the frame is ready. */
 async function loadFrame() {
-  const bytes = await invoke<ArrayBuffer>("overlay_frame", { label });
-  bg.src = URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+  if (frameLoaded) return;
+  try {
+    const bytes = await invoke<ArrayBuffer>("overlay_frame", { label });
+    frameLoaded = true;
+    // Reveal once decoded. (Not requestAnimationFrame: a hidden window never fires it.)
+    bg.onload = () => bg.decode().catch(() => {}).then(() => invoke("overlay_ready", { label }));
+    bg.src = URL.createObjectURL(new Blob([bytes], { type: "image/jpeg" }));
+  } catch {
+    /* not captured yet: the "overlay-frame-ready" event will call us again */
+  }
 }
 
 function cancel() {
@@ -83,4 +96,5 @@ window.addEventListener("contextmenu", (e) => {
   cancel();
 });
 
+listen("overlay-frame-ready", loadFrame);
 loadFrame();
