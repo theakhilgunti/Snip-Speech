@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SnipSpeech</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <main class="card">
+      <div class="logo">✂︎🔊</div>
+      <h1>Welcome to SnipSpeech</h1>
+      <p class="sub">Pick the shortcut you'll press to snip text on your screen and hear it read aloud.</p>
+
+      <div id="recorder" class="recorder" tabindex="0" role="button" aria-label="Record shortcut">
+        Click here, then press your shortcut
+      </div>
+      <p id="hint" class="hint">Use at least one modifier (⌘, ⌃, ⌥ or ⇧) plus a key.</p>
+
+      <div class="actions">
+        <button id="clear" class="ghost" type="button">Clear</button>
+        <button id="save" class="primary" type="button" disabled>Save shortcut</button>
+      </div>
+    </main>
+    <script type="module" src="/src/app.ts"></script>
+  </body>
+</html>

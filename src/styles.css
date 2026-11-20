@@ -1,0 +1,35 @@
+:root {
+  color-scheme: dark;
+  --bg: #14161b;
+  --card: #1d2027;
+  --line: #2d3240;
+  --text: #eef0f5;
+  --muted: #9aa1b2;
+  --accent: #6c8cff;
+  --danger: #ff6b6b;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+body { display: grid; place-items: center; }
+.card { width: 100%; padding: 28px 32px; text-align: center; }
+.logo { font-size: 34px; margin-bottom: 6px; }
+h1 { font-size: 20px; margin: 0 0 6px; }
+.sub { color: var(--muted); font-size: 13px; line-height: 1.5; margin: 0 0 20px; }
+.recorder {
+  border: 2px dashed var(--line); background: var(--card); border-radius: 12px;
+  padding: 18px 12px; font-size: 15px; color: var(--muted); cursor: pointer; outline: none;
+  transition: border-color .15s, color .15s;
+}
+.recorder:focus, .recorder.recording { border-color: var(--accent); color: var(--text); }
+.recorder.set { border-style: solid; color: var(--text); font-size: 22px; letter-spacing: .06em; font-weight: 600; }
+.recorder.bad { border-color: var(--danger); }
+.hint { color: var(--muted); font-size: 12px; min-height: 16px; margin: 10px 0 18px; }
+.hint.error { color: var(--danger); }
+.actions { display: flex; gap: 10px; justify-content: center; }
+button {
+  font: inherit; font-size: 14px; border-radius: 10px; padding: 9px 18px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--card); color: var(--text);
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+button:disabled { opacity: .4; cursor: default; }
