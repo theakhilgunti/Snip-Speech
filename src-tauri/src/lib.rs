@@ -1,8 +1,10 @@
+mod capture;
+
 use serde_json::json;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager, WindowEvent,
+    AppHandle, Emitter, Manager, RunEvent, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 use tauri_plugin_store::StoreExt;
@@ -11,9 +13,8 @@ const STORE_FILE: &str = "settings.json";
 const KEYBIND_KEY: &str = "keybind";
 
 /// Called by the global hotkey and the tray's "New Snip".
-/// The capture overlay is wired in here in Milestone 2.
-fn trigger_snip(_app: &AppHandle) {
-    println!("[snipspeech] snip requested");
+fn trigger_snip(app: &AppHandle) {
+    capture::start(app);
 }
 
 fn saved_keybind(app: &AppHandle) -> Option<String> {
@@ -72,7 +73,11 @@ fn clear_keybind(app: AppHandle) -> Result<(), String> {
 }
 
 pub fn run() {
+    // Remove any screenshots left behind by a previous crash or force-quit.
+    capture::sweep_temp();
+
     tauri::Builder::default()
+        .manage(capture::SnipState::default())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -83,7 +88,16 @@ pub fn run() {
                 })
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![get_keybind, set_keybind, clear_keybind])
+        .invoke_handler(tauri::generate_handler![
+            get_keybind,
+            set_keybind,
+            clear_keybind,
+            capture::overlay_frame,
+            capture::finish_snip,
+            capture::cancel_snip,
+            capture::open_screen_recording_settings,
+            capture::read_latest_snip
+        ])
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -128,11 +142,21 @@ pub fn run() {
         })
         // Closing the window hides it; the app keeps living in the tray.
         .on_window_event(|window, event| {
-            if let WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+            if window.label() == "main" {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running SnipSpeech");
+        .build(tauri::generate_context!())
+        .expect("error while building SnipSpeech")
+        .run(|app, event| match event {
+            // Quitting wipes every screenshot taken this session.
+            RunEvent::Exit => capture::sweep_temp(),
+            // Clicking the Dock icon / relaunching the app brings the window back.
+            #[cfg(target_os = "macos")]
+            RunEvent::Reopen { .. } => show_main(app),
+            _ => {}
+        });
 }
