@@ -1,0 +1,60 @@
+name: Release
+
+# Builds the installer and attaches it to a DRAFT GitHub release.
+# Start it by pushing a version tag (for example: git tag v0.1.0 && git push origin v0.1.0),
+# or run it by hand from the Actions tab. Review the draft, then press "Publish release".
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # To remove the "unidentified developer" warning, join the Apple Developer Program,
+          # add these as repository secrets, and uncomment the six lines below:
+          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          # One installer that runs on both Apple Silicon and Intel Macs.
+          args: --target universal-apple-darwin --bundles dmg
+          tagName: ${{ github.ref_name }}
+          releaseName: "SnipSpeech ${{ github.ref_name }}"
+          releaseBody: |
+            ## Install on Mac
+            1. Download the `.dmg` below and open it.
+            2. Drag **SnipSpeech** into **Applications**.
+            3. Open it. If macOS can't verify the app, **right-click it, choose Open, then Open** again (once).
+            4. Allow **Screen Recording** when asked, then quit and reopen SnipSpeech.
+
+            Works on Apple Silicon and Intel. Windows and Linux are coming later.
+          releaseDraft: true
+          prerelease: false

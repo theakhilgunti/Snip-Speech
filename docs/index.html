@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SnipSpeech: select text on your screen and hear it read aloud</title>
+  <meta name="description" content="SnipSpeech reads any text on your screen aloud. Press a shortcut, drag a box, listen. Free, offline, no AI, no accounts." />
+  <style>
+    :root {
+      --bg: #0b1017; --card: #131a23; --line: rgba(255,255,255,.09);
+      --text: #f1f5f9; --muted: #94a3b8; --accent: #5eead4; --ink: #042f2c;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; background: radial-gradient(1100px 520px at 50% -8%, rgba(94,234,212,.13), transparent 70%), var(--bg);
+      color: var(--text); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif; }
+    a { color: var(--accent); }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 0 22px; }
+    nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; letter-spacing: -.01em; }
+    .brand i { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: linear-gradient(135deg, #46c7b4, #3b82f6); }
+    nav a.gh { color: var(--muted); text-decoration: none; font-size: 14px; }
+    nav a.gh:hover { color: var(--text); }
+
+    .hero { text-align: center; padding: 44px 0 30px; }
+    h1 { font-size: clamp(34px, 6vw, 56px); line-height: 1.08; letter-spacing: -.03em; margin: 0 0 16px; }
+    h1 em { font-style: normal; color: var(--accent); }
+    .sub { color: var(--muted); font-size: 19px; max-width: 560px; margin: 0 auto 30px; }
+
+    .dl { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; }
+    .btn { display: inline-flex; align-items: center; gap: 10px; padding: 16px 30px; border-radius: 16px; background: var(--accent);
+      color: var(--ink); font-size: 18px; font-weight: 700; text-decoration: none; border: 0; cursor: pointer;
+      box-shadow: 0 10px 34px rgba(94,234,212,.28); transition: transform .12s, box-shadow .12s; }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 40px rgba(94,234,212,.38); }
+    .btn[aria-disabled="true"] { background: #25303d; color: var(--muted); box-shadow: none; cursor: default; transform: none; }
+    .note { font-size: 13.5px; color: var(--muted); min-height: 21px; }
+    .other { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+    .other a { margin: 0 6px; }
+
+    .pill { margin: 46px auto 0; width: min(380px, 100%); height: 60px; border-radius: 30px; display: flex; align-items: center; gap: 10px;
+      padding: 0 16px; background: rgba(22,30,40,.85); border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+    .wave { display: flex; gap: 3px; align-items: center; height: 26px; }
+    .wave b { width: 3px; border-radius: 2px; background: var(--accent); animation: dance 1s ease-in-out infinite; }
+    .wave b:nth-child(1) { height: 9px; } .wave b:nth-child(2) { height: 18px; animation-delay: -.2s; }
+    .wave b:nth-child(3) { height: 26px; animation-delay: -.45s; } .wave b:nth-child(4) { height: 15px; animation-delay: -.1s; }
+    .wave b:nth-child(5) { height: 9px; animation-delay: -.65s; }
+    @keyframes dance { 0%,100% { transform: scaleY(.4); } 50% { transform: scaleY(1.1); } }
+    .play { width: 40px; height: 40px; border-radius: 50%; background: #fff; display: grid; place-items: center; }
+    .chip { padding: 5px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; background: rgba(255,255,255,.08); border: 1px solid var(--line); }
+    .grow { flex: 1; }
+
+    section { padding: 64px 0 0; }
+    h2 { font-size: 28px; letter-spacing: -.02em; margin: 0 0 22px; text-align: center; }
+    .steps, .feats { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; }
+    .card .n { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--ink); font-weight: 700; display: grid; place-items: center; margin-bottom: 12px; }
+    .card h3 { margin: 0 0 6px; font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+    details { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; margin-bottom: 10px; }
+    summary { cursor: pointer; font-weight: 600; }
+    details ol, details p { color: var(--muted); margin: 12px 0 0; padding-left: 22px; }
+    details p { padding-left: 0; }
+    details li { margin: 5px 0; }
+    kbd { background: rgba(255,255,255,.1); border-radius: 6px; padding: 1px 7px; font-size: 13px; }
+
+    footer { padding: 56px 0 44px; text-align: center; color: var(--muted); font-size: 14px; }
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand"><i aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><rect x="2" y="9" width="2.6" height="6" rx="1.3"/><rect x="6.6" y="5" width="2.6" height="14" rx="1.3"/><rect x="11.2" y="2" width="2.6" height="20" rx="1.3"/><rect x="15.8" y="6" width="2.6" height="12" rx="1.3"/><rect x="20.4" y="9" width="2.6" height="6" rx="1.3"/></svg>
+      </i>SnipSpeech</div>
+      <a class="gh" href="https://github.com/theakhilgunti/Snip-Speech">View on GitHub</a>
+    </nav>
+
+    <header class="hero">
+      <h1>Select text on your screen.<br /><em>Hear it read aloud.</em></h1>
+      <p class="sub">Press a shortcut, drag a box around any text, and SnipSpeech reads it to you. Free, private, and works offline.</p>
+
+      <div class="dl">
+        <a id="download" class="btn" href="https://github.com/theakhilgunti/Snip-Speech/releases/latest">Download SnipSpeech</a>
+        <div class="note" id="dl-note">&nbsp;</div>
+      </div>
+      <div class="other" id="other"></div>
+
+      <div class="pill" aria-hidden="true">
+        <div class="wave"><b></b><b></b><b></b><b></b><b></b></div>
+        <div class="play"><svg width="18" height="18" viewBox="0 0 24 24"><rect x="6" y="5" width="4.2" height="14" rx="1.2" fill="#0f141b"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.2" fill="#0f141b"/></svg></div>
+        <div class="chip">1.25×</div>
+        <div class="grow"></div>
+        <div class="chip">6/9 words</div>
+      </div>
+    </header>
+
+    <section>
+      <h2>How it works</h2>
+      <div class="steps">
+        <div class="card"><div class="n">1</div><h3>Press your shortcut</h3><p>Pick any key combo you like. The screen freezes and dims.</p></div>
+        <div class="card"><div class="n">2</div><h3>Drag around the text</h3><p>Draw a box over a paragraph, a caption, or a whole page. Esc cancels.</p></div>
+        <div class="card"><div class="n">3</div><h3>Listen</h3><p>It starts reading immediately and highlights each word as it goes.</p></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Made to stay out of your way</h2>
+      <div class="feats">
+        <div class="card"><h3>Private by design</h3><p>Reading and speaking happen on your computer. Nothing is uploaded, and screenshots are deleted when you quit.</p></div>
+        <div class="card"><h3>Your speed, your voice</h3><p>Slide from 0× to 4×, or type an exact speed. Choose any voice installed on your computer.</p></div>
+        <div class="card"><h3>Click any word</h3><p>Jump to any point in the text, or open your history to hear an earlier snip again.</p></div>
+        <div class="card"><h3>Free and open source</h3><p>No account, no subscription, no ads. The code is public under the MIT license.</p></div>
+      </div>
+    </section>
+
+    <section id="help">
+      <h2>Installing on Mac</h2>
+      <details open>
+        <summary>First time setup</summary>
+        <ol>
+          <li>Open the downloaded <b>.dmg</b> and drag <b>SnipSpeech</b> into <b>Applications</b>.</li>
+          <li>Open SnipSpeech. If macOS says it can't verify the app, <b>right-click the app, choose Open</b>, then click <b>Open</b>. You only do this once.</li>
+          <li>Choose your snip shortcut in the welcome window.</li>
+          <li>The first time you snip, allow <b>Screen Recording</b> in System Settings › Privacy &amp; Security. Then quit and reopen SnipSpeech.</li>
+        </ol>
+      </details>
+      <details>
+        <summary>Why does macOS show a warning?</summary>
+        <p>SnipSpeech is a free, independent app and isn't signed with a paid Apple developer certificate yet, so macOS asks you to confirm the first time. The right-click Open step above is the standard way to approve it. The full source code is on GitHub if you'd like to check it.</p>
+      </details>
+      <details>
+        <summary>Does it work on Windows or Linux?</summary>
+        <p>Not yet. They're planned. Star the project on GitHub to follow along.</p>
+      </details>
+    </section>
+
+    <footer>
+      <p>SnipSpeech is free and open source under the <a href="https://github.com/theakhilgunti/Snip-Speech/blob/main/LICENSE">MIT license</a>.<br />
+      <a href="https://github.com/theakhilgunti/Snip-Speech">Source code</a> ·
+      <a href="https://github.com/theakhilgunti/Snip-Speech/issues">Report a problem</a> ·
+      <a href="https://github.com/theakhilgunti/Snip-Speech/releases">All versions</a></p>
+    </footer>
+  </div>
+
+  <script>
+    var REPO = "theakhilgunti/Snip-Speech";
+    var RELEASES = "https://github.com/" + REPO + "/releases/latest";
+    var btn = document.getElementById("download");
+    var note = document.getElementById("dl-note");
+    var other = document.getElementById("other");
+
+    function detectOS() {
+      var p = ((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "").toLowerCase();
+      var ua = (navigator.userAgent || "").toLowerCase();
+      if (/iphone|ipad|android/.test(ua)) return "mobile";
+      if (p.indexOf("mac") > -1 || ua.indexOf("mac os") > -1) return "mac";
+      if (p.indexOf("win") > -1) return "windows";
+      if (p.indexOf("linux") > -1 || ua.indexOf("linux") > -1) return "linux";
+      return "unknown";
+    }
+
+    function pick(assets, test) {
+      for (var i = 0; i < assets.length; i++) if (test(assets[i].name.toLowerCase())) return assets[i];
+      return null;
+    }
+
+    function setDisabled(text, msg) {
+      btn.textContent = text;
+      btn.setAttribute("aria-disabled", "true");
+      btn.removeAttribute("href");
+      note.textContent = msg;
+    }
+
+    var os = detectOS();
+    fetch("https://api.github.com/repos/" + REPO + "/releases/latest")
+      .then(function (r) { if (!r.ok) throw new Error("no release"); return r.json(); })
+      .then(function (rel) {
+        var assets = rel.assets || [];
+        var mac = pick(assets, function (n) { return /\.dmg$/.test(n); });
+        var version = (rel.tag_name || "").replace(/^v/, "");
+
+        if (os === "mac" && mac) {
+          btn.textContent = "Download for Mac";
+          btn.href = mac.browser_download_url;
+          note.textContent = "Version " + version + " · works on Apple Silicon and Intel · free";
+        } else if (os === "mac") {
+          btn.textContent = "See all downloads";
+          btn.href = RELEASES;
+        } else if (os === "windows" || os === "linux") {
+          setDisabled("Coming soon for " + (os === "windows" ? "Windows" : "Linux"),
+            "SnipSpeech is available for Mac today. Star the project on GitHub to follow along.");
+          if (mac) other.innerHTML = 'On a Mac? <a href="' + mac.browser_download_url + '">Download for Mac</a>';
+        } else if (os === "mobile") {
+          setDisabled("Made for computers", "Open this page on a Mac to download SnipSpeech.");
+        } else {
+          btn.textContent = "See all downloads";
+          btn.href = RELEASES;
+        }
+      })
+      .catch(function () {
+        btn.textContent = "Download SnipSpeech";
+        btn.href = RELEASES;
+        note.textContent = "Opens the download page on GitHub";
+      });
+  </script>
+</body>
+</html>
