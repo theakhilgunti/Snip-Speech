@@ -1,4 +1,5 @@
 mod capture;
+mod ocr;
 
 use serde_json::json;
 use tauri::{
@@ -96,7 +97,8 @@ pub fn run() {
             capture::finish_snip,
             capture::cancel_snip,
             capture::open_screen_recording_settings,
-            capture::read_latest_snip
+            capture::read_latest_snip,
+            capture::read_latest_text
         ])
         .setup(|app| {
             let handle = app.handle().clone();

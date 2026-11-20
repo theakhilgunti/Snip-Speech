@@ -8,15 +8,25 @@
       :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
       html, body { margin: 0; height: 100%; background: #14161b; color: #eef0f5; }
       body { display: flex; flex-direction: column; }
-      .stage { flex: 1; display: grid; place-items: center; padding: 16px; overflow: auto;
+      .stage { flex: 0 0 38%; display: grid; place-items: center; padding: 14px; overflow: auto;
         background: repeating-conic-gradient(#1b1e25 0% 25%, #171a20 0% 50%) 50% / 20px 20px; }
       img { max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 6px 24px rgba(0,0,0,.5); }
-      footer { padding: 10px 16px; font-size: 12px; color: #9aa1b2; border-top: 1px solid #2d3240; }
+      .text { flex: 1; display: flex; flex-direction: column; min-height: 0; border-top: 1px solid #2d3240; }
+      .text h2 { margin: 0; padding: 10px 16px 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #9aa1b2; }
+      #text { flex: 1; margin: 0; padding: 8px 16px 12px; overflow: auto; white-space: pre-wrap;
+        font-size: 15px; line-height: 1.5; user-select: text; -webkit-user-select: text; }
+      #text.muted { color: #9aa1b2; }
+      #text.error { color: #ff6b6b; }
+      footer { padding: 8px 16px; font-size: 12px; color: #9aa1b2; border-top: 1px solid #2d3240; }
     </style>
   </head>
   <body>
     <div class="stage"><img id="shot" alt="Latest snip" /></div>
-    <footer id="info">Waiting for a snip…</footer>
+    <section class="text">
+      <h2>Extracted text</h2>
+      <pre id="text" class="muted">Waiting for a snip…</pre>
+    </section>
+    <footer id="info">&nbsp;</footer>
     <script type="module" src="/src/preview.ts"></script>
   </body>
 </html>

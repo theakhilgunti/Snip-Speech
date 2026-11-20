@@ -40,6 +40,7 @@ struct Session {
     active: bool,
     frames: Vec<Frame>,
     latest: Option<PathBuf>,
+    latest_text: Option<Result<String, String>>,
 }
 
 #[derive(Default)]
@@ -265,10 +266,37 @@ pub fn finish_snip(
     cropped.save(&path).map_err(|e| e.to_string())?;
     prune_old_snips();
 
-    state.0.lock().unwrap().latest = Some(path.clone());
+    {
+        let mut s = state.0.lock().unwrap();
+        s.latest = Some(path.clone());
+        s.latest_text = None; // new snip: previous text is stale until OCR finishes
+    }
     show_preview(&app);
     let _ = app.emit("snip-captured", path.to_string_lossy().to_string());
+
+    // OCR off the UI thread; the result arrives as a "snip-text" event.
+    let ocr_app = app.clone();
+    std::thread::spawn(move || {
+        let outcome = fs::read(&path)
+            .map_err(|e| e.to_string())
+            .and_then(|png| crate::ocr::recognize(&png));
+        ocr_app.state::<SnipState>().0.lock().unwrap().latest_text = Some(outcome.clone());
+        let _ = ocr_app.emit("snip-text", ocr_payload(&outcome));
+    });
     Ok(())
+}
+
+fn ocr_payload(outcome: &Result<String, String>) -> serde_json::Value {
+    match outcome {
+        Ok(text) => serde_json::json!({ "text": text, "error": null }),
+        Err(err) => serde_json::json!({ "text": null, "error": err }),
+    }
+}
+
+/// OCR result for the latest snip, or null while it is still being read.
+#[tauri::command]
+pub fn read_latest_text(state: State<SnipState>) -> Option<serde_json::Value> {
+    state.0.lock().unwrap().latest_text.as_ref().map(ocr_payload)
 }
 
 #[tauri::command]
@@ -310,7 +338,7 @@ fn show_preview(app: &AppHandle) {
             WebviewUrl::App("preview.html".into()),
         )
         .title("Snip preview")
-        .inner_size(520.0, 420.0)
+        .inner_size(520.0, 600.0)
         .always_on_top(true)
         .center()
         .build();
