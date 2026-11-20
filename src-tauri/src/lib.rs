@@ -1,5 +1,6 @@
 mod capture;
 mod ocr;
+mod tts_engine;
 
 use serde_json::json;
 use tauri::{
@@ -98,7 +99,11 @@ pub fn run() {
             capture::cancel_snip,
             capture::open_screen_recording_settings,
             capture::read_latest_snip,
-            capture::read_latest_text
+            capture::read_latest_text,
+            tts_engine::tts_speak,
+            tts_engine::tts_pause,
+            tts_engine::tts_resume,
+            tts_engine::tts_stop
         ])
         .setup(|app| {
             let handle = app.handle().clone();
