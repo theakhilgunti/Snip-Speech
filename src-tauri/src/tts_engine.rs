@@ -8,11 +8,34 @@
 
 use tauri::AppHandle;
 
-/// Map a speed multiplier (0.75x .. 2.0x) onto AVSpeech's 0..1 rate (0.5 = normal).
+/// Map a speed multiplier onto AVSpeech's 0..1 rate (0.5 = normal).
+///
+/// The relationship is not linear, so this interpolates measured points: for each rate
+/// the (speed vs. 1x, rate) pairs below come from timing the default macOS voice with
+/// `AVSpeechSynthesizer.write`. The voice can't go below ~0.5x or above ~4x.
 #[cfg(target_os = "macos")]
 fn rate_for(multiplier: f32) -> f32 {
-    let m = multiplier.clamp(0.5, 3.0);
-    (0.5 + 0.5 * (m.ln() / 4f32.ln())).clamp(0.0, 1.0)
+    const TABLE: [(f32, f32); 11] = [
+        (0.50, 0.0),
+        (0.59, 0.1),
+        (0.72, 0.2),
+        (0.77, 0.3),
+        (0.91, 0.4),
+        (1.00, 0.5),
+        (1.59, 0.6),
+        (2.11, 0.7),
+        (2.80, 0.8),
+        (3.52, 0.9),
+        (4.03, 1.0),
+    ];
+    let m = multiplier.clamp(TABLE[0].0, TABLE[TABLE.len() - 1].0);
+    for w in TABLE.windows(2) {
+        let ((s0, r0), (s1, r1)) = (w[0], w[1]);
+        if m <= s1 {
+            return r0 + (r1 - r0) * (m - s0) / (s1 - s0);
+        }
+    }
+    1.0
 }
 
 #[cfg(target_os = "macos")]
@@ -147,7 +170,14 @@ mod mac {
         })
     }
 
-    pub fn speak(app: &AppHandle, text: &str, offset: usize, speed: f32, voice: Option<&str>) {
+    pub fn speak(
+        app: &AppHandle,
+        text: &str,
+        offset: usize,
+        speed: f32,
+        volume: f32,
+        voice: Option<&str>,
+    ) {
         with_engine(app, |e| {
             let full = NSString::from_str(text);
             let offset = offset.min(full.length());
@@ -159,6 +189,7 @@ mod mac {
             let utt = unsafe { AVSpeechUtterance::speechUtteranceWithString(&rest) };
             unsafe {
                 utt.setRate(super::rate_for(speed));
+                utt.setVolume(volume.clamp(0.0, 1.0));
                 if let Some(id) = voice {
                     let v = AVSpeechSynthesisVoice::voiceWithIdentifier(&NSString::from_str(id));
                     utt.setVoice(v.as_deref());
@@ -217,9 +248,42 @@ pub fn tts_speak(
     text: String,
     offset: usize,
     speed: f32,
+    volume: f32,
     voice: Option<String>,
 ) -> Result<(), String> {
-    on_main(&app, move |a| mac::speak(a, &text, offset, speed, voice.as_deref()))
+    on_main(&app, move |a| mac::speak(a, &text, offset, speed, volume, voice.as_deref()))
+}
+
+#[derive(serde::Serialize)]
+pub struct VoiceInfo {
+    id: String,
+    name: String,
+    /// BCP-47 language tag, e.g. "en-US".
+    language: String,
+}
+
+/// Every voice installed on this Mac.
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub fn tts_voices() -> Vec<VoiceInfo> {
+    use objc2_avf_audio::AVSpeechSynthesisVoice;
+    let voices = unsafe { AVSpeechSynthesisVoice::speechVoices() };
+    voices
+        .iter()
+        .map(|v| unsafe {
+            VoiceInfo {
+                id: v.identifier().to_string(),
+                name: v.name().to_string(),
+                language: v.language().to_string(),
+            }
+        })
+        .collect()
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+pub fn tts_voices() -> Vec<VoiceInfo> {
+    Vec::new()
 }
 
 #[cfg(target_os = "macos")]
@@ -250,6 +314,7 @@ pub fn tts_speak(
     _text: String,
     _offset: usize,
     _speed: f32,
+    _volume: f32,
     _voice: Option<String>,
 ) -> Result<(), String> {
     Err(UNSUPPORTED.into())

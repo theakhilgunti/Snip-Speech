@@ -5,11 +5,7 @@
 //! original full-resolution pixels -> PNG saved to a temp folder that is wiped on
 //! quit (and swept again on the next launch in case of a crash).
 
-use std::{
-    fs,
-    path::{Path, PathBuf},
-    sync::Mutex,
-};
+use std::{fs, path::PathBuf, sync::Mutex};
 
 use image::{codecs::jpeg::JpegEncoder, DynamicImage, ExtendedColorType, ImageEncoder, RgbaImage};
 use tauri::{
@@ -39,8 +35,6 @@ struct OverlayInfo {
 struct Session {
     active: bool,
     frames: Vec<Frame>,
-    latest: Option<PathBuf>,
-    latest_text: Option<Result<String, String>>,
 }
 
 #[derive(Default)]
@@ -266,13 +260,8 @@ pub fn finish_snip(
     cropped.save(&path).map_err(|e| e.to_string())?;
     prune_old_snips();
 
-    {
-        let mut s = state.0.lock().unwrap();
-        s.latest = Some(path.clone());
-        s.latest_text = None; // new snip: previous text is stale until OCR finishes
-    }
-    show_preview(&app);
-    let _ = app.emit("snip-captured", path.to_string_lossy().to_string());
+    crate::pill::show(&app, None);
+    let _ = app.emit("snip-captured", ());
 
     // OCR off the UI thread; the result arrives as a "snip-text" event.
     let ocr_app = app.clone();
@@ -280,7 +269,11 @@ pub fn finish_snip(
         let outcome = fs::read(&path)
             .map_err(|e| e.to_string())
             .and_then(|png| crate::ocr::recognize(&png));
-        ocr_app.state::<SnipState>().0.lock().unwrap().latest_text = Some(outcome.clone());
+        if let Ok(text) = &outcome {
+            if !text.trim().is_empty() {
+                crate::history::add(&ocr_app, text);
+            }
+        }
         let _ = ocr_app.emit("snip-text", ocr_payload(&outcome));
     });
     Ok(())
@@ -293,54 +286,8 @@ fn ocr_payload(outcome: &Result<String, String>) -> serde_json::Value {
     }
 }
 
-/// OCR result for the latest snip, or null while it is still being read.
-#[tauri::command]
-pub fn read_latest_text(state: State<SnipState>) -> Option<serde_json::Value> {
-    state.0.lock().unwrap().latest_text.as_ref().map(ocr_payload)
-}
-
 #[tauri::command]
 pub fn cancel_snip(app: AppHandle) {
     end_session(&app);
 }
 
-/// Bytes of the most recent snip PNG (used by the Milestone 2 preview window).
-#[tauri::command]
-pub fn read_latest_snip(state: State<SnipState>) -> Result<Response, String> {
-    let path = state
-        .0
-        .lock()
-        .unwrap()
-        .latest
-        .clone()
-        .ok_or("no snip yet")?;
-    if !is_inside_temp(&path) {
-        return Err("refusing to read outside the snip folder".into());
-    }
-    fs::read(&path).map(Response::new).map_err(|e| e.to_string())
-}
-
-fn is_inside_temp(path: &Path) -> bool {
-    path.starts_with(temp_dir())
-}
-
-fn show_preview(app: &AppHandle) {
-    let handle = app.clone();
-    let _ = app.run_on_main_thread(move || {
-        if let Some(w) = handle.get_webview_window("preview") {
-            let _ = w.show();
-            let _ = w.set_focus();
-            return;
-        }
-        let _ = WebviewWindowBuilder::new(
-            &handle,
-            "preview",
-            WebviewUrl::App("preview.html".into()),
-        )
-        .title("Snip preview")
-        .inner_size(520.0, 600.0)
-        .always_on_top(true)
-        .center()
-        .build();
-    });
-}

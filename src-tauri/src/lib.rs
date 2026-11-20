@@ -1,5 +1,7 @@
 mod capture;
+mod history;
 mod ocr;
+mod pill;
 mod tts_engine;
 
 use serde_json::json;
@@ -74,6 +76,28 @@ fn clear_keybind(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Player preferences kept across launches: voice id, speed multiplier, volume (0-100).
+#[tauri::command]
+fn get_prefs(app: AppHandle) -> serde_json::Value {
+    let store = app.store(STORE_FILE).ok();
+    let get = |k: &str| store.as_ref().and_then(|s| s.get(k));
+    json!({
+        "voice": get("voice").unwrap_or(serde_json::Value::Null),
+        "speed": get("speed").unwrap_or(json!(1.0)),
+        "volume": get("volume").unwrap_or(json!(100)),
+    })
+}
+
+#[tauri::command]
+fn set_pref(app: AppHandle, key: String, value: serde_json::Value) -> Result<(), String> {
+    if !["voice", "speed", "volume"].contains(&key.as_str()) {
+        return Err(format!("unknown preference: {key}"));
+    }
+    let store = app.store(STORE_FILE).map_err(|e| e.to_string())?;
+    store.set(key, value);
+    store.save().map_err(|e| e.to_string())
+}
+
 pub fn run() {
     // Remove any screenshots left behind by a previous crash or force-quit.
     capture::sweep_temp();
@@ -98,8 +122,12 @@ pub fn run() {
             capture::finish_snip,
             capture::cancel_snip,
             capture::open_screen_recording_settings,
-            capture::read_latest_snip,
-            capture::read_latest_text,
+            get_prefs,
+            set_pref,
+            history::history_list,
+            history::history_get,
+            history::history_clear,
+            tts_engine::tts_voices,
             tts_engine::tts_speak,
             tts_engine::tts_pause,
             tts_engine::tts_resume,
@@ -107,6 +135,9 @@ pub fn run() {
         ])
         .setup(|app| {
             let handle = app.handle().clone();
+
+            // The floating pill, created hidden so it is ready before the first snip.
+            pill::build(&handle)?;
 
             // Tray icon + menu.
             let new_snip = MenuItemBuilder::with_id("new_snip", "New Snip").build(app)?;
@@ -125,11 +156,8 @@ pub fn run() {
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "new_snip" => trigger_snip(app),
-                    "controls" => show_main(app),
-                    "keybind" => {
-                        show_main(app);
-                        let _ = app.emit("show-onboarding", ());
-                    }
+                    "controls" => pill::show(app, Some("transcript")),
+                    "keybind" => pill::show(app, Some("settings")),
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -149,7 +177,7 @@ pub fn run() {
         })
         // Closing the window hides it; the app keeps living in the tray.
         .on_window_event(|window, event| {
-            if window.label() == "main" {
+            if matches!(window.label(), "main" | "pill") {
                 if let WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
                     let _ = window.hide();
@@ -163,7 +191,13 @@ pub fn run() {
             RunEvent::Exit => capture::sweep_temp(),
             // Clicking the Dock icon / relaunching the app brings the window back.
             #[cfg(target_os = "macos")]
-            RunEvent::Reopen { .. } => show_main(app),
+            RunEvent::Reopen { .. } => {
+                if saved_keybind(app).is_some() {
+                    pill::show(app, None);
+                } else {
+                    show_main(app);
+                }
+            }
             _ => {}
         });
 }

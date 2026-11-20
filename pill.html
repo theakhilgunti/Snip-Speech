@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SnipSpeech</title>
+    <link rel="stylesheet" href="/src/pill.css" />
+  </head>
+  <body>
+    <div class="shell" id="shell">
+      <!-- Compact pill -->
+      <div class="bar" data-tauri-drag-region>
+        <div class="wave" id="wave" data-tauri-drag-region aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22">
+            <rect x="2" y="9" width="2.6" height="6" rx="1.3" />
+            <rect x="6.6" y="5" width="2.6" height="14" rx="1.3" />
+            <rect x="11.2" y="2" width="2.6" height="20" rx="1.3" />
+            <rect x="15.8" y="6" width="2.6" height="12" rx="1.3" />
+            <rect x="20.4" y="9" width="2.6" height="6" rx="1.3" />
+          </svg>
+        </div>
+
+        <button id="play" class="play" type="button" title="Play / Pause" disabled>
+          <svg id="ic-play" viewBox="0 0 24 24" width="20" height="20"><path d="M8 5.5v13l11-6.5z" fill="currentColor" /></svg>
+          <svg id="ic-pause" viewBox="0 0 24 24" width="20" height="20" hidden><rect x="6" y="5" width="4.2" height="14" rx="1.2" fill="currentColor" /><rect x="13.8" y="5" width="4.2" height="14" rx="1.2" fill="currentColor" /></svg>
+        </button>
+
+        <button id="stop" class="icon" type="button" title="Stop / Restart" disabled>
+          <svg viewBox="0 0 24 24" width="16" height="16"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor" /></svg>
+        </button>
+
+        <button id="speed" class="speed" type="button" title="Reading speed" aria-expanded="false">
+          <span id="speed-label">1×</span>
+          <svg class="chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6" /></svg>
+        </button>
+
+        <button id="volume-btn" class="icon" type="button" title="Volume" aria-expanded="false">
+          <svg id="ic-vol" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor" stroke="none" /><path d="M15.5 9a4 4 0 0 1 0 6" /><path id="wave2" d="M18 6.5a7.5 7.5 0 0 1 0 11" /></svg>
+          <svg id="ic-mute" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" fill="currentColor" stroke="none" /><path d="M16 9.5l5 5M21 9.5l-5 5" /></svg>
+        </button>
+
+        <span class="grow" data-tauri-drag-region></span>
+
+        <button id="min" class="icon" type="button" title="Hide (keeps playing)">
+          <svg viewBox="0 0 24 24" width="16" height="16"><rect x="5" y="11" width="14" height="2.4" rx="1.2" fill="currentColor" /></svg>
+        </button>
+        <button id="expand" class="icon" type="button" title="Transcript, history &amp; settings">
+          <svg id="ic-expand" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7" /></svg>
+          <svg id="ic-collapse" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" hidden><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7" /></svg>
+        </button>
+      </div>
+
+      <!-- Speed dropdown (the window grows to fit it) -->
+      <div class="speedpop" id="speedpop" hidden>
+        <div class="sp-head">
+          <span>Reading speed</span>
+          <span class="sp-in"><input id="speed-input" type="text" inputmode="decimal" autocomplete="off" aria-label="Speed" /><span>×</span></span>
+        </div>
+        <div class="sp-track">
+          <div class="rail"><div class="fill" id="rail-fill"></div><div class="detent" id="notch"></div></div>
+          <input id="speed-range" type="range" min="0" max="4" step="0.05" value="1" aria-label="Speed slider" />
+        </div>
+        <div class="ticks" id="ticks"></div>
+        <div class="sp-note" id="speed-note"></div>
+      </div>
+
+      <!-- Volume dropdown (same shape as the speed one) -->
+      <div class="speedpop" id="volpop" hidden>
+        <div class="sp-head">
+          <span>Volume</span>
+          <span class="sp-in"><input id="vol-input" type="text" inputmode="numeric" autocomplete="off" aria-label="Volume percent" /><span>%</span></span>
+        </div>
+        <div class="sp-track">
+          <div class="rail"><div class="fill" id="vol-fill"></div></div>
+          <input id="vol-range" type="range" min="0" max="100" step="1" value="100" aria-label="Volume slider" />
+        </div>
+        <div class="ticks" id="vol-ticks"></div>
+        <div class="sp-note" id="vol-note"></div>
+      </div>
+
+      <!-- Expandable drawer -->
+      <div class="drawer" id="drawer">
+        <nav class="tabs" id="tabs">
+          <button type="button" data-tab="transcript" class="on">Transcript</button>
+          <button type="button" data-tab="history">History</button>
+          <button type="button" data-tab="settings">Settings</button>
+        </nav>
+
+        <section class="panel" id="panel-transcript">
+          <div class="meta" id="meta">&nbsp;</div>
+          <div class="transcript muted" id="text">Snip some text and it will be read aloud here.</div>
+          <div class="hintline">Click any word to start reading from there.</div>
+        </section>
+
+        <section class="panel" id="panel-history" hidden>
+          <div class="panel-head">
+            <h2>History</h2>
+            <button id="clear-history" class="danger" type="button">Clear History</button>
+          </div>
+          <div class="list" id="history-list"></div>
+        </section>
+
+        <section class="panel" id="panel-settings" hidden>
+          <h2>Snip shortcut</h2>
+          <div class="row">
+            <div id="rec" class="recorder" tabindex="0" role="button" aria-label="Record shortcut"></div>
+            <button id="rec-clear" class="ghost" type="button">Clear</button>
+          </div>
+          <p class="note" id="rec-note">Use modifiers (⌘ ⌃ ⌥ ⇧) plus one key.</p>
+
+          <h2>Voice</h2>
+          <div class="row">
+            <select id="voice" aria-label="Voice"></select>
+            <button id="voice-preview" class="ghost" type="button">Preview Voice</button>
+          </div>
+          <p class="note">All voices installed on this Mac. Add more in System Settings › Accessibility › Spoken Content.</p>
+        </section>
+      </div>
+    </div>
+    <script type="module" src="/src/pill.ts"></script>
+  </body>
+</html>
